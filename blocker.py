@@ -46,17 +46,46 @@ def unblocking_websites():
         file.truncate()
     print("Websites successfully unblocked.")
 
+def focus_timer(minutes):
+    print(f"\nFocus mode ON for {minutes} minute(s). Websites blocked.")
+    blocking_websites()
+    try:
+        time.sleep(minutes * 60)
+    except KeyboardInterrupt:
+        print("\nFocus interrupted early.")
+    finally:
+        unblocking_websites()
+        print("\nFocus session has ended. Websited unblocked.")
+
+
+
+
+
+
 
 
 
 if __name__ =="__main__":
-    action = input("Type 'block' to block or 'unblock' to unblock websites: ").strip()
-    if action == 'block':
+    print("Choose an option:")
+    print("1. Block websites")
+    print("2. Unblock websites")
+    print("3. Start Focus Timer")
+
+    choice = input("Type 'block' to block or 'unblock' to unblock websites: ").strip()
+    if choice == '1':
         blocking_websites()
-    elif action = 'unblock':
+    elif choice == '2':
         unblocking_websites()
+    elif choice == '3':
+        try:
+            mins = int(input("Enter focus mode in minutes: ").strip())
+            focus_timer(mins)
+        except ValueError:
+            print("Please enter a valid number.")
     else:
-        print("Invalid action.")
+        print("Invalid choice.")
+
+
 
 
 
