@@ -2,30 +2,29 @@ import csv
 import json
 from datetime import datetime
 
-CSV_PATH = "focus_history.csv"
-JSON_PATH = "history.json"
-
-def log_to_csv(start, end, duration):
-    with open(CSV_PATH, mode='a', newline='') as file:
+def log_to_csv(start_time, end_time, duration):
+    with open("focus_history.csv", mode="a", newline="") as file:
         writer = csv.writer(file)
-        writer.writerow([start, end, duration])
+        writer.writerow([
+            start_time.strftime("%Y-%m-%d %H:%M:%S"),
+            end_time.strftime("%Y-%m-%d %H:%M:%S"),
+            duration
+        ])
 
-def log_to_json(start, end, websites):
-    record = {
-        "start": start.isoformat(),
-        "end": end.isoformat(),
-        "blocked_sites": websites
+def log_to_json(start_time, end_time, duration):
+    data = {
+        "start": start_time.isoformat(),
+        "end": end_time.isoformat(),
+        "duration_minutes": duration
     }
 
     try:
-        with open(JSON_PATH, 'r+') as file:
-            data = json.load(file)
-            data.append(record)
-            file.seek(0)
-            json.dump(data, file, indent=4)
-    except FileNotFoundError:
-        with open(JSON_PATH, 'w') as file:
-            json.dump([record], file, indent=4)
+        with open("focus_history.json", "r") as file:
+            history = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        history = []
 
-    print(f"[JSON] Logged session with {len(websites_blocked)} sites.")
-    
+    history.append(data)
+
+    with open("focus_history.json", "w") as file:
+        json.dump(history, file, indent=4)

@@ -1,44 +1,58 @@
+import time
 import threading
-from datetime import datetime, timedelta
-from logger import log_to_csv, log_to_json
-from blocker import blocking_websites, unblocking_websites
+from datetime import datetime
+from shared import get_timer_cancelled, set_timer_cancelled
 
-def start_focus_timer(duration_minutes, label, on_finish_callback, websites=()):
-    total_seconds = duration_minutes * 60
-    end_time = datetime.now() + timedelta(seconds=total_seconds)
+def log_focus_session(start, end, duration):
+    with open("focus_history.csv", "a") as f:
+        f.write(f"{start}\t{end}\t{duration}\n")
 
-    def countdown():
-        nonlocal total_seconds
+def countdown(minutes, label, on_finish_callback=None, websites=None):
+    set_timer_cancelled(False)
+    seconds = minutes * 60
+    start_time = datetime.now()
 
-        if total_seconds <= 0:
-            unblocking_websites()
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            log_to_csv(start_time, now, duration_minutes)
-            log_to_json(start_time, now, duration_minutes, websites)
-            label.config(text="Focus session ended!")
-            if on_finish_callback:
-                on_finish_callback()
+    def update():
+        nonlocal seconds
+        while seconds > 0:
+            if get_timer_cancelled():
+                return
+            mins, secs = divmod(seconds, 60)
+            label.config(text=f"Remaining: {mins:02}:{secs:02}")
+            time.sleep(1)
+            seconds -= 1
+
+        end_time = datetime.now()
+        duration = (end_time - start_time).seconds // 60
+        log_focus_session(start_time.strftime("%Y-%m-%d %H:%M:%S"), end_time.strftime("%Y-%m-%d %H:%M:%S"), duration)
+
+        if on_finish_callback:
+            on_finish_callback()
+
+    threading.Thread(target=update, daemon=True).start()
+
+def start_focus_timer(minutes, label, on_finish_callback=None, websites=None):
+    countdown(minutes, label, on_finish_callback, websites)
+
+def start_pomodoro_timer(work_minutes, break_minutes, label, on_finish_callback=None):
+    def pomodoro():
+        set_timer_cancelled(False)
+
+        label.config(text="Pomodoro: Work session started")
+        countdown(work_minutes, label)
+
+        time.sleep(work_minutes * 60)
+        if get_timer_cancelled():
             return
 
-        mins,secs = divmod(total_seconds, 60)
-        label.config(text=f"Focus Time Left: {mins:02d}:{secs:02d}")
-        total_seconds -=1
-        label.after(1000,countdown)
+        label.config(text="Pomodoro: Break time!")
+        countdown(break_minutes, label)
 
-    start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    blocking_websites()
-    countdown()
+        time.sleep(break_minutes * 60)
+        if get_timer_cancelled():
+            return
 
-def start_pomodoro_timer(work_minutes, break_minutes, label, on_cycle_end):
-    def on_break_end():
-        label.config(text="Pomodoro session complete!")
-        if on_cycle_end:
-            on_cycle_end()
+        if on_finish_callback:
+            on_finish_callback()
 
-    def start_break():
-        label.config(text="Break has started!")
-        label.after(1000, lambda: start_focus_timer(work_minutes, label, start_break))
-
-
-
-
+    threading.Thread(target=pomodoro, daemon=True).start()

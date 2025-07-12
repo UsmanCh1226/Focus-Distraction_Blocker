@@ -1,91 +1,35 @@
-import time
-import platform
-import os
-import sys
+# blocker.py
 
+DEFAULT_WEBSITES = [
+    "facebook.com", "www.facebook.com",
+    "youtube.com", "www.youtube.com",
+    "twitter.com", "www.twitter.com",
+    "instagram.com", "www.instagram.com",
+    "reddit.com", "www.reddit.com"
+]
 
-HOSTS_PATH = r"C:\Windows\System32\drivers\etc\hosts" if os.name == 'nt' else "/etc/hosts"
-REDIRECT_IP = "127.0.0.1"
-BLOCK_TAG = "# Blocked by FocusBlocker"
+def load_websites():
+    try:
+        with open("custom_websites.txt", "r") as f:
+            sites = [line.strip() for line in f if line.strip()]
+            return sites if sites else DEFAULT_WEBSITES
+    except FileNotFoundError:
+        return DEFAULT_WEBSITES
 
-WEBSITES= ["www.youtube.com",
-                     "facebook.com",
-                     "www.netflix.com",
-                     "netflix.com"]
+WEBSITES = load_websites()
 
-
-
-def blocking_websites():
-    print("Blocking websites...")
-    with open(HOSTS_PATH, "r+") as file:
+def blocking_websites(websites, host_path="/etc/hosts", redirect_ip="127.0.0.1"):
+    with open(host_path, "r+") as file:
         content = file.read()
-        file.seek(0)
-        already_blocked = False
-        for line in content:
-            if any(site in line for site in WEBSITES):
-                already_blocked = True
-                break
+        for site in websites:
+            if site not in content:
+                file.write(f"{redirect_ip} {site}\n")
 
-        if already_blocked:
-            print("Websites are already blocked.")
-
-        else:
-            file.writelines(content)
-            for website in WEBSITES:
-                file.write(f"{REDIRECT_IP} {website} {BLOCK_TAG}\n")
-            print("Websites successfully blocked.")
-
-
-def unblocking_websites():
-    with open(HOSTS_PATH, "r+") as file:
+def unblocking_websites(websites, host_path="/etc/hosts"):
+    with open(host_path, "r+") as file:
         lines = file.readlines()
         file.seek(0)
         for line in lines:
-            if BLOCK_TAG not in line:
+            if not any(site in line for site in websites):
                 file.write(line)
         file.truncate()
-    print("Websites successfully unblocked.")
-
-def focus_timer(minutes):
-    print(f"\nFocus mode ON for {minutes} minute(s). Websites blocked.")
-    blocking_websites()
-    try:
-        time.sleep(minutes * 60)
-    except KeyboardInterrupt:
-        print("\nFocus interrupted early.")
-    finally:
-        unblocking_websites()
-        print("\nFocus session has ended. Websited unblocked.")
-
-
-
-
-
-
-
-
-
-if __name__ =="__main__":
-    print("Choose an option:")
-    print("1. Block websites")
-    print("2. Unblock websites")
-    print("3. Start Focus Timer")
-
-    choice = input("Type 'block' to block or 'unblock' to unblock websites: ").strip()
-    if choice == '1':
-        blocking_websites()
-    elif choice == '2':
-        unblocking_websites()
-    elif choice == '3':
-        try:
-            mins = int(input("Enter focus mode in minutes: ").strip())
-            focus_timer(mins)
-        except ValueError:
-            print("Please enter a valid number.")
-    else:
-        print("Invalid choice.")
-
-
-
-
-
